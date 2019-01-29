@@ -1,0 +1,5 @@
+numpy==1.15.4
+matplotlib==3.0.2
+SoundFile==0.10.2
+yaml==0.1.7
+librosa==0.6.2
