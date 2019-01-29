@@ -1,0 +1,7 @@
+noise_info:
+  - path: "bg_noise/freesound_background_gsm"
+    ratio: 0.5
+  - path: "bg_noise/FRESOUND_BEEPS_gsm/dev"
+    ratio: 0.1
+  - path: "office01.wav"
+    ratio: 0.5
