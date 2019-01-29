@@ -5,9 +5,10 @@ import argparse
 import os
 import random
 import yaml
+import soundfile as sf
 
 eps = 1e-9
-samplerate = 16000
+sample_rate = 16000
 
 
 class NoiseAdder:
@@ -30,7 +31,7 @@ class NoiseAdder:
 
 
 def load_audio(file_path):
-    data, _ = librosa.core.load(file_path, samplerate)
+    data, _ = librosa.core.load(file_path, sample_rate)
     return data
 
 
@@ -59,7 +60,8 @@ def create_noise_adder(noise_yaml):
             raise("no file or directory " + path)
     return NoiseAdder(fragment_generators)
 
-def createparser():
+
+def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help="Input file (.wav or .flac)")
     parser.add_argument('-n', '--noise', help="Noise discription (.yaml)", default='noise.yaml')
@@ -68,7 +70,7 @@ def createparser():
 
 
 def main():
-    parser = createparser()
+    parser = create_parser()
     args = parser.parse_args()
 
     input_file = args.input
@@ -76,11 +78,16 @@ def main():
     with open(args.noise, 'r') as f:
         noise_yaml = yaml.load(f)
 
+    assert input_file.endswith(".wav") or input_file.endswith(".flac")
+    assert output_file.endswith(".wav") or output_file.endswith(".flac")
+
     sound = load_audio(input_file)
     output = create_noise_adder(noise_yaml).add_noise(sound)
 
-    librosa.output.write_wav(output_file, output, samplerate)
-    os.system("cvlc " + output_file)
+    if output_file.endswith(".wav"):
+        librosa.output.write_wav(output_file, output, sample_rate)
+    elif output_file.endswith(".flac"):
+        sf.write(output_file, output, sample_rate, format='flac', subtype='PCM_24')
 
 
 if __name__ == '__main__':
