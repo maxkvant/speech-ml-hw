@@ -3,5 +3,5 @@ noise_info:
     ratio: 0.5
   - path: "bg_noise/FRESOUND_BEEPS_gsm/dev"
     ratio: 0.1
-  - path: "office01.wav"
+  - path: "test_audio/office01.wav"
     ratio: 0.5

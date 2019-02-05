@@ -64,7 +64,7 @@ def create_noise_adder(noise_yaml):
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help="Input file (.wav or .flac)")
-    parser.add_argument('-n', '--noise', help="Noise discription (.yaml)", default='noise.yaml')
+    parser.add_argument('-n', '--noise', help="Noise description (.yaml)", default='noise-example.yaml')
     parser.add_argument('-o', '--output', help="Output file (.wav or .flac)", default='output.wav')
     return parser
 
@@ -81,14 +81,19 @@ def main():
     assert input_file.endswith(".wav") or input_file.endswith(".flac")
     assert output_file.endswith(".wav") or output_file.endswith(".flac")
 
+    print("loading ...")
+
     sound = load_audio(input_file)
-    output = create_noise_adder(noise_yaml).add_noise(sound)
+    noise_adder = create_noise_adder(noise_yaml)
+    print("adding noise ...")
+    output = noise_adder.add_noise(sound)
 
     if output_file.endswith(".wav"):
         librosa.output.write_wav(output_file, output, sample_rate)
     elif output_file.endswith(".flac"):
         sf.write(output_file, output, sample_rate, format='flac', subtype='PCM_24')
 
+    print("done")
 
 if __name__ == '__main__':
     main()
