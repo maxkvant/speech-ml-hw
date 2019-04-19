@@ -4,8 +4,10 @@ from os.path import join
 import numpy as np
 import pandas as pd
 import scipy.io.wavfile as wav
+import time
 
 from laughter_classification.utils import chunks, in_any, interv_to_range, get_sname
+from laughter_prediction.feature_extractors import LibrosaExtractor
 
 from laughter_prediction.sample_audio import sample_wav_by_time
 
@@ -66,13 +68,30 @@ class SSPNetDataSampler:
         """
         Returns sampled data by path to audio file
         :param wav_path: string, .wav file path
-        :param frame_sec: int, length of each frame in sec
+        :param frame_sec: float, length of each frame in sec
         :return: pandas.DataFrame with sampled audio
         """
         data = sample_wav_by_time(wav_path, frame_sec)
         labels = self.get_labels_for_file(wav_path, frame_sec)
         df = pd.concat([data, labels], axis=1)
+
+        colnames = ["V{}".format(i) for i in range(df.shape[1] - 2)]
+        colnames.append("IS_LAUGHTER")
+        colnames.append("SNAME")
+        df.columns = colnames
         return df
+
+    def df_fbank_mfcc_from_file(self, wav_path, frame_sec):
+        """
+        Returns sampled data by path to audio file
+        :param wav_path: string, .wav file path
+        :param frame_sec: float, length of each frame in sec
+        :return: pandas.DataFrame with sampled audio
+        """
+        labels = self.get_labels_for_file(wav_path, frame_sec)
+        data = LibrosaExtractor(frame_sec).extract_features(wav_path)
+        df = pd.concat([data, labels], axis=1)
+        return df.dropna()
 
     def get_valid_wav_paths(self):
         for dirpath, dirnames, filenames in os.walk(self.data_dir):
@@ -89,13 +108,16 @@ class SSPNetDataSampler:
         :return:
         """
         fullpaths = self.get_valid_wav_paths()[:naudio]
-        dataframes = [self.df_from_file(wav_path, frame_sec) for wav_path in fullpaths]
-        df = pd.concat(dataframes)
+        dataframes = []
 
-        colnames = ["V{}".format(i) for i in range(df.shape[1] - 2)]
-        colnames.append("IS_LAUGHTER")
-        colnames.append("SNAME")
-        df.columns = colnames
+        start_time = time.time()
+        for iter, wav_path in enumerate(fullpaths):
+            dataframes.append(self.df_fbank_mfcc_from_file(wav_path, frame_sec))
+
+            if (iter > 2) and (iter & (iter - 1) == 0):
+                print("iter {}/{} {}".format(iter, len(fullpaths), time.time() - start_time))
+
+        df = pd.concat(dataframes)
 
         if save_path is not None:
             if not os.path.isfile(save_path) or force_save:
