@@ -98,7 +98,7 @@ class SSPNetDataSampler:
             fullpaths = [join(dirpath, fn) for fn in filenames]
             return [path for path in fullpaths if len(wav.read(path)[1]) == self.default_len]
 
-    def create_sampled_df(self, frame_sec, naudio=None, save_path=None, force_save=False):
+    def create_sampled_df(self, frame_sec, lazy=True, naudio=None, save_path=None, force_save=False):
         """
         Returns sampled data for whole corpus
         :param frame_sec: int, length of each frame in sec
@@ -107,6 +107,9 @@ class SSPNetDataSampler:
         :param force_save: boolean, if you want to override file with same name
         :return:
         """
+        if lazy and (not force_save) and (save_path is not None) and os.path.exists(save_path):
+            return pd.DataFrame.from_csv(save_path, index_col=None)
+
         fullpaths = self.get_valid_wav_paths()[:naudio]
         dataframes = []
 
