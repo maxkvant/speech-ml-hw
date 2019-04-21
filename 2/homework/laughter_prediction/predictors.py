@@ -80,16 +80,16 @@ class RnnPredictor(Predictor):
     def __init__(self, model: LibrosaFeaturesRnn):
         self.model = model
 
-    def predict(self, X, threshold=0.5):
-        P = self.predict_proba(X)
+    def predict(self, X, device='cpu', threshold=0.5):
+        P = self.predict_proba(X, device)
         res = np.zeros_like(P, dtype=np.int)
         res[P < threshold] = 0
         res[P >= threshold] = 1
         return res
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, device='cpu'):
         self.model.set_batch_size(len(X))
-        X = torch.tensor(X)
-        predicted_proba = self.model.forward(X).detach()
-        return torch.exp(predicted_proba[:,1]).numpy()
+        X_tensor = torch.tensor(X).float().to(device)
+        predicted_proba, _ = self.model.forward(X_tensor, device)
+        return torch.exp(predicted_proba[:,:,1]).cpu().detach().numpy()
 
