@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy.io.wavfile as wav
 import time
+from joblib import Parallel, delayed
 
 from laughter_classification.utils import chunks, in_any, interv_to_range, get_sname
 from laughter_prediction.feature_extractors import LibrosaExtractor
@@ -111,14 +112,21 @@ class SSPNetDataSampler:
             return pd.DataFrame.from_csv(save_path, index_col=None)
 
         fullpaths = self.get_valid_wav_paths()[:naudio]
-        dataframes = []
+        fullpaths = list(sorted(fullpaths))
 
         start_time = time.time()
-        for iter, wav_path in enumerate(fullpaths):
-            dataframes.append(self.df_fbank_mfcc_from_file(wav_path, frame_sec))
+
+        def read_dataframe(self_iter_path_frame_n):
+            self_, iter, wav_path, frame_sec, n = self_iter_path_frame_n
+            res = self_.df_fbank_mfcc_from_file(wav_path, frame_sec)
 
             if (iter > 2) and (iter & (iter - 1) == 0):
-                print("iter {}/{} {}".format(iter, len(fullpaths), time.time() - start_time))
+                print("iter {}/{} {}".format(iter, n, time.time() - start_time))
+            return res
+
+
+        dataframes = Parallel(n_jobs=6)(delayed(read_dataframe)((self, iter, wav_path, frame_sec, len(fullpaths)))
+                                        for iter, wav_path in enumerate(fullpaths))
 
         df = pd.concat(dataframes)
 
