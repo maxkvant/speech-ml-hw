@@ -1,7 +1,10 @@
 import numpy as np
+import torch
 
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
+
+from laughter_prediction.rnn import LibrosaFeaturesRnn
 
 
 class Predictor:
@@ -74,9 +77,19 @@ class StrictLargeXgboostPredictor(XgboostPredictor):
 
 
 class RnnPredictor(Predictor):
-    # Your code here
-    def predict(self, X):
-        pass
+    def __init__(self, model: LibrosaFeaturesRnn):
+        self.model = model
+
+    def predict(self, X, threshold=0.5):
+        P = self.predict_proba(X)
+        res = np.zeros_like(P, dtype=np.int)
+        res[P < threshold] = 0
+        res[P >= threshold] = 1
+        return res
 
     def predict_proba(self, X):
-        pass
+        self.model.set_batch_size(len(X))
+        X = torch.tensor(X)
+        predicted_proba = self.model.forward(X).detach()
+        return torch.exp(predicted_proba[:,1]).numpy()
+

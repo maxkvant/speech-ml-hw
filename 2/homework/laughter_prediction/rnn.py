@@ -24,8 +24,6 @@ class LibrosaFeaturesRnn(nn.Module):
     def forward(self, x, device='cpu'):
         x_fbank = x[:, :, :self.fbank_features].permute(1, 0, 2)
         x_mfcc  = x[:, :, self.fbank_features:].permute(1, 0, 2)
-        print(x_fbank.size())
-        print(x_mfcc.size())
 
         out_fbank_lstm, _ = self.fbank_lstm(x_fbank, self.init_hidden_state(device))
         out_mfcc_lstm, _  = self.mfcc_lstm(x_mfcc,  self.init_hidden_state(device))
@@ -35,6 +33,7 @@ class LibrosaFeaturesRnn(nn.Module):
 
         pred_mfcc = F.log_softmax(out_mfcc, dim=-1)
         pred_both = F.log_softmax(out_both, dim=-1)
-        return pred_both, pred_mfcc
+        return pred_both.permute(1, 0, 2), pred_mfcc.permute(1, 0, 2)
 
-
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
