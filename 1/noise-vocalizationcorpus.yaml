@@ -1,0 +1,9 @@
+noise_info:
+  - path: "background_noise/freesound_background_gsm"
+    ratio: 0.4
+  - path: "background_noise/FRESOUND_BEEPS_gsm/dev"
+    ratio: 0.1
+  - path: "background_noise/freesound_foreground_gsm"
+    ratio: 0.4
+  - path: "background_noise/aasp_challenge_2013_gsm"
+    ratio: 10.
