@@ -92,4 +92,3 @@ class RnnPredictor(Predictor):
         X_tensor = torch.tensor(X).float().to(device)
         predicted_proba, _ = self.model.forward(X_tensor, device)
         return torch.exp(predicted_proba[:,:,1]).cpu().detach().numpy()
-
