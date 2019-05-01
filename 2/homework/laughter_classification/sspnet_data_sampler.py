@@ -121,7 +121,8 @@ class SSPNetDataSampler:
             res = self_.df_fbank_mfcc_from_file(wav_path, frame_sec)
 
             if (iter > 2) and (iter & (iter - 1) == 0):
-                print("iter {}/{} {}".format(iter, n, time.time() - start_time))
+                time_from_start =  time.time() - start_time
+                print(f"iter {iter}/{n} {time_from_start}")
             return res
 
 
