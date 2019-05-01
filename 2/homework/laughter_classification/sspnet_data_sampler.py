@@ -116,18 +116,17 @@ class SSPNetDataSampler:
 
         start_time = time.time()
 
-        def read_dataframe(self_iter_path_frame_n):
-            self_, iter, wav_path, frame_sec, n = self_iter_path_frame_n
+        def read_from_file(self_iter_path_frame_n):
+            self_, iteration, wav_path, frame_sec, n = self_iter_path_frame_n
             res = self_.df_fbank_mfcc_from_file(wav_path, frame_sec)
 
-            if (iter > 2) and (iter & (iter - 1) == 0):
+            if (iteration > 2) and (iteration & (iteration - 1) == 0):
                 time_from_start =  time.time() - start_time
-                print(f"iter {iter}/{n} {time_from_start}")
+                print(f"iter {iteration}/{n} {time_from_start}")
             return res
 
-
-        dataframes = Parallel(n_jobs=6)(delayed(read_dataframe)((self, iter, wav_path, frame_sec, len(fullpaths)))
-                                        for iter, wav_path in enumerate(fullpaths))
+        dataframes = Parallel(n_jobs=6)(delayed(read_from_file)((self, iteration, wav_path, frame_sec, len(fullpaths)))
+                                        for iteration, wav_path in enumerate(fullpaths))
 
         df = pd.concat(dataframes)
 
