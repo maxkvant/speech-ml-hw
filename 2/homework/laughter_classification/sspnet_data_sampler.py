@@ -4,8 +4,11 @@ from os.path import join
 import numpy as np
 import pandas as pd
 import scipy.io.wavfile as wav
+import time
+from joblib import Parallel, delayed
 
 from laughter_classification.utils import chunks, in_any, interv_to_range, get_sname
+from laughter_prediction.feature_extractors import LibrosaExtractor
 
 from laughter_prediction.sample_audio import sample_wav_by_time
 
@@ -66,20 +69,37 @@ class SSPNetDataSampler:
         """
         Returns sampled data by path to audio file
         :param wav_path: string, .wav file path
-        :param frame_sec: int, length of each frame in sec
+        :param frame_sec: float, length of each frame in sec
         :return: pandas.DataFrame with sampled audio
         """
         data = sample_wav_by_time(wav_path, frame_sec)
         labels = self.get_labels_for_file(wav_path, frame_sec)
         df = pd.concat([data, labels], axis=1)
+
+        colnames = ["V{}".format(i) for i in range(df.shape[1] - 2)]
+        colnames.append("IS_LAUGHTER")
+        colnames.append("SNAME")
+        df.columns = colnames
         return df
+
+    def df_fbank_mfcc_from_file(self, wav_path, frame_sec):
+        """
+        Returns sampled data by path to audio file
+        :param wav_path: string, .wav file path
+        :param frame_sec: float, length of each frame in sec
+        :return: pandas.DataFrame with sampled audio
+        """
+        labels = self.get_labels_for_file(wav_path, frame_sec)
+        data = LibrosaExtractor(frame_sec).extract_features(wav_path)
+        df = pd.concat([data, labels], axis=1)
+        return df.dropna()
 
     def get_valid_wav_paths(self):
         for dirpath, dirnames, filenames in os.walk(self.data_dir):
             fullpaths = [join(dirpath, fn) for fn in filenames]
             return [path for path in fullpaths if len(wav.read(path)[1]) == self.default_len]
 
-    def create_sampled_df(self, frame_sec, naudio=None, save_path=None, force_save=False):
+    def create_sampled_df(self, frame_sec, lazy=True, naudio=None, save_path=None, force_save=False):
         """
         Returns sampled data for whole corpus
         :param frame_sec: int, length of each frame in sec
@@ -88,14 +108,27 @@ class SSPNetDataSampler:
         :param force_save: boolean, if you want to override file with same name
         :return:
         """
-        fullpaths = self.get_valid_wav_paths()[:naudio]
-        dataframes = [self.df_from_file(wav_path, frame_sec) for wav_path in fullpaths]
-        df = pd.concat(dataframes)
+        if lazy and (not force_save) and (save_path is not None) and os.path.exists(save_path):
+            return pd.DataFrame.from_csv(save_path, index_col=None)
 
-        colnames = ["V{}".format(i) for i in range(df.shape[1] - 2)]
-        colnames.append("IS_LAUGHTER")
-        colnames.append("SNAME")
-        df.columns = colnames
+        fullpaths = self.get_valid_wav_paths()[:naudio]
+        fullpaths = list(sorted(fullpaths))
+
+        start_time = time.time()
+
+        def read_from_file(self_iter_path_frame_n):
+            self_, iteration, wav_path, frame_sec, n = self_iter_path_frame_n
+            res = self_.df_fbank_mfcc_from_file(wav_path, frame_sec)
+
+            if (iteration > 2) and (iteration & (iteration - 1) == 0):
+                time_from_start =  time.time() - start_time
+                print(f"iter {iteration}/{n} {time_from_start}")
+            return res
+
+        dataframes = Parallel(n_jobs=6)(delayed(read_from_file)((self, iteration, wav_path, frame_sec, len(fullpaths)))
+                                        for iteration, wav_path in enumerate(fullpaths))
+
+        df = pd.concat(dataframes)
 
         if save_path is not None:
             if not os.path.isfile(save_path) or force_save:
